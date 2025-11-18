@@ -1,0 +1,1 @@
+# terraform_03_minio_buckets
