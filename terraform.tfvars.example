@@ -1,0 +1,6 @@
+# Exemplo de preenchimento para referência.
+server             = "https://storage.exemplo.com"
+user               = "minioadmin"
+password           = "minioadmin"
+bucket_config_file = "buckets.json"
+copyhtml           = false

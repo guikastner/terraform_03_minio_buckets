@@ -1,0 +1,13 @@
+{
+  "buckets": [
+    {
+      "name": "appopentofu",
+      "folders": [
+        "pasta",
+        "pasta2",
+        "pasta3"
+      ],
+      "public": true
+    }
+  ]
+}

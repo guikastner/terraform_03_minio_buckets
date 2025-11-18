@@ -1,0 +1,14 @@
+{
+  "buckets": [
+    {
+      "name": "dados-app",
+      "folders": ["entrada", "saida"],
+      "public": true
+    },
+    {
+      "name": "logs-app",
+      "folders": ["erros"],
+      "public": false
+    }
+  ]
+}
