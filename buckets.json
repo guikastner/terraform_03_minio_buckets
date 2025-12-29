@@ -8,6 +8,14 @@
         "pasta3"
       ],
       "public": true
+    },
+    {
+      "name": "widget3dx",
+      "folders": [
+        "widget",
+        "widgetforms"
+      ],
+      "public": true
     }
   ]
 }

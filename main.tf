@@ -42,14 +42,14 @@ locals {
     ]
   ])
 
-	  folder_map = {
-	    for spec in local.folder_specs :
-	    format("%s/%s", spec.bucket_name, spec.folder_name) => {
-	      bucket_name = spec.bucket_name
-	      folder_name = spec.folder_name
-	      keep_key    = format("%s/.keep", spec.folder_name)
-	    }
-	  }
+  folder_map = {
+    for spec in local.folder_specs :
+    format("%s/%s", spec.bucket_name, spec.folder_name) => {
+      bucket_name = spec.bucket_name
+      folder_name = spec.folder_name
+      keep_key    = format("%s/.keep", spec.folder_name)
+    }
+  }
 
   public_bucket_map = {
     for bucket_name, bucket in local.bucket_map :
@@ -67,6 +67,10 @@ locals {
   } : null
 
   html_source = "${path.module}/index.html"
+
+  mc_alias      = format("tf-%s", substr(sha1(local.normalized_url_clean), 0, 8))
+  mc_config_dir = "${path.module}/.mc-tf"
+
 }
 
 provider "minio" {
@@ -76,22 +80,67 @@ provider "minio" {
   minio_password = var.password
 }
 
-resource "minio_s3_bucket" "this" {
+resource "null_resource" "mc_alias" {
+  triggers = {
+    endpoint        = local.normalized_url_clean
+    alias           = local.mc_alias
+    access_key_hash = sha256(var.user)
+    secret_key_hash = sha256(var.password)
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
+    command = <<-EOT
+      set -euo pipefail
+      mc alias set --config-dir "$MC_CONFIG_DIR" ${local.mc_alias} ${local.normalized_url_clean} "$MC_ACCESS_KEY" "$MC_SECRET_KEY"
+    EOT
+
+    environment = {
+      MC_CONFIG_DIR = local.mc_config_dir
+      MC_ACCESS_KEY = var.user
+      MC_SECRET_KEY = var.password
+    }
+  }
+}
+
+resource "null_resource" "bucket_create" {
   for_each = local.bucket_map
-  bucket   = each.key
-  acl      = each.value.public ? "public-read" : "private"
+
+  triggers = {
+    bucket = each.key
+    public = tostring(each.value.public)
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
+    command = <<-EOT
+      set -euo pipefail
+      mc mb --ignore-existing --config-dir "$MC_CONFIG_DIR" ${local.mc_alias}/${each.key}
+      if [ "${each.value.public}" = "true" ]; then
+        mc anonymous set download --config-dir "$MC_CONFIG_DIR" ${local.mc_alias}/${each.key}
+      fi
+    EOT
+
+    environment = {
+      MC_CONFIG_DIR = local.mc_config_dir
+    }
+  }
+
+  depends_on = [null_resource.mc_alias]
 }
 
 resource "minio_s3_object" "subfolder" {
   for_each   = local.folder_map
-  bucket_name = minio_s3_bucket.this[each.value.bucket_name].bucket
+  bucket_name = each.value.bucket_name
   object_name = each.value.keep_key
   content     = "placeholder" # provider exige algum conteúdo para criar o objeto
+
+  depends_on = [null_resource.bucket_create]
 }
 
 resource "minio_s3_bucket_policy" "public_read" {
   for_each = local.public_bucket_map
-  bucket   = minio_s3_bucket.this[each.key].bucket
+  bucket   = each.key
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -117,12 +166,16 @@ resource "minio_s3_bucket_policy" "public_read" {
       }
     ]
   })
+
+  depends_on = [null_resource.bucket_create]
 }
 
 resource "minio_s3_object" "index_html" {
   count       = var.copyhtml && local.html_target != null ? 1 : 0
-  bucket_name = minio_s3_bucket.this[local.html_target.bucket_name].bucket
+  bucket_name = local.html_target.bucket_name
   object_name = local.html_target.object_key
   source      = local.html_source
   content_type = "text/html; charset=utf-8"
+
+  depends_on = [null_resource.bucket_create]
 }
