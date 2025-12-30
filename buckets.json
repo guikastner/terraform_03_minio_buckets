@@ -13,7 +13,8 @@
       "name": "widget3dx",
       "folders": [
         "widget",
-        "widgetforms"
+        "widgetforms",
+        "widgetVite"
       ],
       "public": true
     }
