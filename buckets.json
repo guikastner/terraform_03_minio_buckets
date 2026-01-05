@@ -17,6 +17,14 @@
         "widgetVite"
       ],
       "public": true
+    },
+    {
+      "name": "kastnerbucket",
+      "folders": [
+        "sample",
+        "one"
+      ],
+      "public": true
     }
   ]
 }
