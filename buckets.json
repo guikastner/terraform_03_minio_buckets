@@ -14,7 +14,8 @@
       "folders": [
         "widget",
         "widgetforms",
-        "widgetVite"
+        "widgetVite",
+        "widgetDuplicate"
       ],
       "public": true
     },
