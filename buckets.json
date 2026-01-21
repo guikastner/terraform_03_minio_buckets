@@ -26,6 +26,13 @@
         "one"
       ],
       "public": true
+    },
+    {
+      "name": "DataEngineerRole",
+      "folders": [
+        "lesson3"
+      ],
+      "public": true
     }
   ]
 }
