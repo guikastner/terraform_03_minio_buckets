@@ -30,7 +30,10 @@
     {
       "name": "dataengineerrole",
       "folders": [
-        "lesson3"
+        "lesson3",
+        "lesson4",
+        "sample",
+        "steamgamedataset"
       ],
       "public": true
     }
