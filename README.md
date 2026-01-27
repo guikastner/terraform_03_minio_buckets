@@ -49,6 +49,20 @@ tofu apply   # type 'yes' to create buckets and folders
 ```
 After `tofu apply`, look for the `index_html_url` output if you enabled the HTML copy.
 
+## Working with `terraform.tfvars`
+- Copy `terraform.tfvars.example` to `terraform.tfvars` and fill in real values (endpoint, access key, secret, JSON manifest path, and `copyhtml` flag). The example file uses placeholders only.
+- Keep `terraform.tfvars` out of version control—`git status` should never show it staged. It already sits in `.gitignore`; avoid `git add terraform.tfvars`.
+- If you prefer not to store secrets on disk, pass an alternate vars file with `tofu plan -var-file=secure.tfvars` and `tofu apply -var-file=secure.tfvars`, or override single values via `-var 'password=...'`.
+- Minimum contents of a working vars file:
+  ```hcl
+  server             = "https://minio.example.com"
+  user               = "MINIO_ACCESS_KEY"
+  password           = "MINIO_SECRET_KEY"
+  bucket_config_file = "buckets.json"
+  copyhtml           = true
+  ```
+- Ensure the `bucket_config_file` path you reference actually exists before running `tofu plan`, otherwise the plan will fail while loading the manifest.
+
 ## Repository Layout
 - `main.tf` – Provider configuration, locals, bucket/folder resources, and optional HTML upload logic.
 - `variables.tf` – Input variables consumed by the configuration.
