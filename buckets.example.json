@@ -3,12 +3,14 @@
     {
       "name": "dados-app",
       "folders": ["entrada", "saida"],
-      "public": true
+      "public": true,
+      "non_admin_access": true
     },
     {
       "name": "logs-app",
       "folders": ["erros"],
-      "public": false
+      "public": false,
+      "non_admin_access": false
     }
   ]
 }

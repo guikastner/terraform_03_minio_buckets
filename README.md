@@ -7,6 +7,7 @@ This repository ships an OpenTofu configuration that provisions one or more MinI
 - Generates `.keep` placeholder objects for all requested folders so the directory tree appears immediately.
 - Optionally uploads the bundled `index.html` page to the first folder of the first bucket when `copyhtml = true`.
 - Applies `public-read` ACLs and read/list bucket policies only to buckets marked as `public: true`.
+- Creates a second non-admin MinIO user (optional) from `tfvars` and grants access only to buckets marked with `non_admin_access: true`.
 - Exposes the `index_html_url` output so you know where the HTML was uploaded.
 
 ## Prerequisites
@@ -17,6 +18,7 @@ This repository ships an OpenTofu configuration that provisions one or more MinI
 1. Copy `terraform.tfvars.example` to `terraform.tfvars` and edit the following values:
    - `server`: MinIO endpoint. Both `https://host:port` and plain hostnames are accepted (HTTPS is assumed when the scheme is omitted).
    - `user` / `password`: MinIO access key and secret key.
+   - `non_admin_user` / `non_admin_password`: Optional second user without admin rights. Set both or leave both empty.
    - `bucket_config_file`: Path to the JSON manifest (defaults to `buckets.json`).
    - `copyhtml`: Boolean flag controlling whether `index.html` is copied.
 2. Customize the JSON manifest referenced above. Example:
@@ -26,12 +28,14 @@ This repository ships an OpenTofu configuration that provisions one or more MinI
        {
          "name": "data-app",
          "folders": ["incoming", "processed"],
-         "public": true
+         "public": true,
+         "non_admin_access": true
        },
        {
          "name": "logs-app",
-         "folders": ["errors"],
-         "public": false
+          "folders": ["errors"],
+         "public": false,
+         "non_admin_access": false
        }
      ]
    }
@@ -39,6 +43,7 @@ This repository ships an OpenTofu configuration that provisions one or more MinI
    - `name` – Bucket identifier.
    - `folders` – Array of first-level folders to create. Empty strings are ignored.
    - `public` – Optional boolean (default `false`). When `true`, the bucket receives `public-read` ACLs and policies so anonymous users can list and read.
+   - `non_admin_access` – Optional boolean (default `false`). When `true`, the second non-admin user receives list/read/write access to that bucket.
    When `copyhtml = true`, only the first folder of the first bucket receives the HTML file; all other folders get only the `.keep` placeholder.
 
 ## Running OpenTofu
@@ -58,6 +63,8 @@ After `tofu apply`, look for the `index_html_url` output if you enabled the HTML
   server             = "https://minio.example.com"
   user               = "MINIO_ACCESS_KEY"
   password           = "MINIO_SECRET_KEY"
+  non_admin_user     = "APP_USER"
+  non_admin_password = "APP_USER_SECRET"
   bucket_config_file = "buckets.json"
   copyhtml           = true
   ```

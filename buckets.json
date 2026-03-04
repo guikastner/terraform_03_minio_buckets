@@ -7,7 +7,8 @@
         "pasta2",
         "pasta3"
       ],
-      "public": true
+      "public": true,
+      "non_admin_access": true
     },
     {
       "name": "widget3dx",
@@ -17,7 +18,8 @@
         "widgetVite",
         "widgetDuplicate"
       ],
-      "public": true
+      "public": true,
+      "non_admin_access": true
     },
     {
       "name": "kastnerbucket",
@@ -25,7 +27,8 @@
         "sample",
         "one"
       ],
-      "public": true
+      "public": true,
+      "non_admin_access": false
     },
     {
       "name": "dataengineerrole",
@@ -35,7 +38,8 @@
         "sample",
         "steamgamedataset"
       ],
-      "public": true
+      "public": true,
+      "non_admin_access": false
     }
   ]
 }

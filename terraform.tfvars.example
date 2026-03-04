@@ -2,5 +2,7 @@
 server             = "https://storage.exemplo.com"
 user               = "minioadmin"
 password           = "minioadmin"
+non_admin_user     = "appuser"
+non_admin_password = "senha-forte-appuser"
 bucket_config_file = "buckets.json"
 copyhtml           = false

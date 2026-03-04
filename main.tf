@@ -1,13 +1,13 @@
 locals {
-  server_input = trimspace(var.server)
-  lower_input  = lower(local.server_input)
-  has_https    = startswith(local.lower_input, "https://")
-  has_http     = startswith(local.lower_input, "http://")
-  normalized_url = local.has_https || local.has_http ? local.server_input : format("https://%s", local.server_input)
+  server_input         = trimspace(var.server)
+  lower_input          = lower(local.server_input)
+  has_https            = startswith(local.lower_input, "https://")
+  has_http             = startswith(local.lower_input, "http://")
+  normalized_url       = local.has_https || local.has_http ? local.server_input : format("https://%s", local.server_input)
   normalized_url_clean = trimsuffix(local.normalized_url, "/")
-  normalized_lower = lower(local.normalized_url)
-  normalized_https = startswith(local.normalized_lower, "https://")
-  normalized_http  = startswith(local.normalized_lower, "http://")
+  normalized_lower     = lower(local.normalized_url)
+  normalized_https     = startswith(local.normalized_lower, "https://")
+  normalized_http      = startswith(local.normalized_lower, "http://")
 
   server_no_scheme = local.normalized_https ? substr(local.normalized_url, 8, length(local.normalized_url) - 8) : (local.normalized_http ? substr(local.normalized_url, 7, length(local.normalized_url) - 7) : local.normalized_url)
   server_host_port = element(split("/", local.server_no_scheme), 0)
@@ -18,9 +18,9 @@ locals {
   scheme_https  = local.normalized_https
   scheme_http   = local.normalized_http
 
-  minio_port    = local.explicit_port != null ? local.explicit_port : (local.scheme_https ? 443 : (local.scheme_http ? 80 : 9000))
-  minio_ssl     = local.scheme_https
-  minio_server  = format("%s:%d", local.minio_host, local.minio_port)
+  minio_port   = local.explicit_port != null ? local.explicit_port : (local.scheme_https ? 443 : (local.scheme_http ? 80 : 9000))
+  minio_ssl    = local.scheme_https
+  minio_server = format("%s:%d", local.minio_host, local.minio_port)
 
   bucket_config_file = var.bucket_config_file != "" ? var.bucket_config_file : "${path.module}/buckets.json"
   bucket_config      = jsondecode(file(local.bucket_config_file))
@@ -28,8 +28,9 @@ locals {
   bucket_map = {
     for bucket in local.bucket_list :
     bucket.name => {
-      folders = tolist(try(bucket.folders, []))
-      public  = try(bucket.public, false)
+      folders          = tolist(try(bucket.folders, []))
+      public           = try(bucket.public, false)
+      non_admin_access = try(bucket.non_admin_access, false)
     }
   }
 
@@ -57,11 +58,48 @@ locals {
     if bucket.public
   }
 
+  non_admin_user_trimmed     = trimspace(var.non_admin_user)
+  non_admin_password_trimmed = trimspace(var.non_admin_password)
+  non_admin_enabled          = local.non_admin_user_trimmed != "" && local.non_admin_password_trimmed != ""
+  non_admin_bucket_names = sort([
+    for bucket_name, bucket in local.bucket_map : bucket_name
+    if bucket.non_admin_access
+  ])
+  non_admin_policy_name = format("tf-bucket-access-%s", substr(sha1(local.non_admin_user_trimmed), 0, 10))
+  non_admin_policy = {
+    Version = "2012-10-17"
+    Statement = flatten([
+      for bucket_name in local.non_admin_bucket_names : [
+        {
+          Sid    = format("AllowListBucket%s", substr(sha1(bucket_name), 0, 12))
+          Effect = "Allow"
+          Action = [
+            "s3:GetBucketLocation",
+            "s3:ListBucket",
+          ]
+          Resource = [format("arn:aws:s3:::%s", bucket_name)]
+        },
+        {
+          Sid    = format("AllowObjectRw%s", substr(sha1(bucket_name), 0, 12))
+          Effect = "Allow"
+          Action = [
+            "s3:AbortMultipartUpload",
+            "s3:DeleteObject",
+            "s3:GetObject",
+            "s3:ListBucketMultipartUploads",
+            "s3:PutObject",
+          ]
+          Resource = [format("arn:aws:s3:::%s/*", bucket_name)]
+        }
+      ]
+    ])
+  }
+
   html_target_bucket      = try(local.bucket_list[0], null)
   html_target_bucket_name = try(local.html_target_bucket.name, null)
   html_target_folder_raw  = trimspace(try(local.html_target_bucket.folders[0], ""))
   html_target_folder      = local.html_target_folder_raw != "" ? local.html_target_folder_raw : null
-  html_target             = local.html_target_bucket_name != null && local.html_target_folder != null ? {
+  html_target = local.html_target_bucket_name != null && local.html_target_folder != null ? {
     bucket_name = local.html_target_bucket_name
     object_key  = format("%s/index.html", local.html_target_folder)
   } : null
@@ -74,9 +112,9 @@ locals {
 }
 
 provider "minio" {
-  minio_server = local.minio_server
-  minio_ssl    = local.minio_ssl
-  minio_user   = var.user
+  minio_server   = local.minio_server
+  minio_ssl      = local.minio_ssl
+  minio_user     = var.user
   minio_password = var.password
 }
 
@@ -90,7 +128,7 @@ resource "null_resource" "mc_alias" {
 
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
-    command = <<-EOT
+    command     = <<-EOT
       set -euo pipefail
       mc alias set --config-dir "$MC_CONFIG_DIR" ${local.mc_alias} ${local.normalized_url_clean} "$MC_ACCESS_KEY" "$MC_SECRET_KEY"
     EOT
@@ -113,7 +151,7 @@ resource "null_resource" "bucket_create" {
 
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-c"]
-    command = <<-EOT
+    command     = <<-EOT
       set -euo pipefail
       mc mb --ignore-existing --config-dir "$MC_CONFIG_DIR" ${local.mc_alias}/${each.key}
       if [ "${each.value.public}" = "true" ]; then
@@ -129,8 +167,80 @@ resource "null_resource" "bucket_create" {
   depends_on = [null_resource.mc_alias]
 }
 
+resource "null_resource" "non_admin_user" {
+  count = local.non_admin_enabled ? 1 : 0
+
+  triggers = {
+    endpoint               = local.normalized_url_clean
+    alias                  = local.mc_alias
+    non_admin_user         = local.non_admin_user_trimmed
+    non_admin_password_sha = sha256(var.non_admin_password)
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+      if mc admin user info --config-dir "$MC_CONFIG_DIR" ${local.mc_alias} "$NON_ADMIN_USER" >/dev/null 2>&1; then
+        mc admin user remove --config-dir "$MC_CONFIG_DIR" ${local.mc_alias} "$NON_ADMIN_USER"
+      fi
+      mc admin user add --config-dir "$MC_CONFIG_DIR" ${local.mc_alias} "$NON_ADMIN_USER" "$NON_ADMIN_PASSWORD"
+      mc admin user enable --config-dir "$MC_CONFIG_DIR" ${local.mc_alias} "$NON_ADMIN_USER"
+    EOT
+
+    environment = {
+      MC_CONFIG_DIR      = local.mc_config_dir
+      NON_ADMIN_USER     = local.non_admin_user_trimmed
+      NON_ADMIN_PASSWORD = var.non_admin_password
+    }
+  }
+
+  depends_on = [null_resource.mc_alias]
+}
+
+resource "null_resource" "non_admin_policy" {
+  count = local.non_admin_enabled ? 1 : 0
+
+  triggers = {
+    endpoint                = local.normalized_url_clean
+    alias                   = local.mc_alias
+    non_admin_user          = local.non_admin_user_trimmed
+    non_admin_policy_name   = local.non_admin_policy_name
+    non_admin_policy_sha256 = sha256(jsonencode(local.non_admin_policy))
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["/bin/bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+      policy_file="$(mktemp)"
+      trap 'rm -f "$policy_file"' EXIT
+
+      cat > "$policy_file" <<'JSON'
+${jsonencode(local.non_admin_policy)}
+JSON
+
+      mc admin policy detach --config-dir "$MC_CONFIG_DIR" ${local.mc_alias} "$NON_ADMIN_POLICY_NAME" --user "$NON_ADMIN_USER" >/dev/null 2>&1 || true
+      mc admin policy remove --config-dir "$MC_CONFIG_DIR" ${local.mc_alias} "$NON_ADMIN_POLICY_NAME" >/dev/null 2>&1 || true
+      mc admin policy create --config-dir "$MC_CONFIG_DIR" ${local.mc_alias} "$NON_ADMIN_POLICY_NAME" "$policy_file"
+      mc admin policy attach --config-dir "$MC_CONFIG_DIR" ${local.mc_alias} "$NON_ADMIN_POLICY_NAME" --user "$NON_ADMIN_USER"
+    EOT
+
+    environment = {
+      MC_CONFIG_DIR         = local.mc_config_dir
+      NON_ADMIN_USER        = local.non_admin_user_trimmed
+      NON_ADMIN_POLICY_NAME = local.non_admin_policy_name
+    }
+  }
+
+  depends_on = [
+    null_resource.bucket_create,
+    null_resource.non_admin_user,
+  ]
+}
+
 resource "minio_s3_object" "subfolder" {
-  for_each   = local.folder_map
+  for_each    = local.folder_map
   bucket_name = each.value.bucket_name
   object_name = each.value.keep_key
   content     = "placeholder" # provider exige algum conteúdo para criar o objeto
@@ -150,7 +260,7 @@ resource "minio_s3_bucket_policy" "public_read" {
         Effect    = "Allow"
         Principal = "*"
         Action    = ["s3:ListBucket"]
-        Resource  = [
+        Resource = [
           format("arn:aws:s3:::%s", each.key)
         ]
       },
@@ -171,10 +281,10 @@ resource "minio_s3_bucket_policy" "public_read" {
 }
 
 resource "minio_s3_object" "index_html" {
-  count       = var.copyhtml && local.html_target != null ? 1 : 0
-  bucket_name = local.html_target.bucket_name
-  object_name = local.html_target.object_key
-  source      = local.html_source
+  count        = var.copyhtml && local.html_target != null ? 1 : 0
+  bucket_name  = local.html_target.bucket_name
+  object_name  = local.html_target.object_key
+  source       = local.html_source
   content_type = "text/html; charset=utf-8"
 
   depends_on = [null_resource.bucket_create]
