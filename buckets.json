@@ -8,7 +8,7 @@
         "pasta3"
       ],
       "public": true,
-      "non_admin_access": true
+      "non_admin_access": false
     },
     {
       "name": "widget3dx",
@@ -19,7 +19,7 @@
         "widgetDuplicate"
       ],
       "public": true,
-      "non_admin_access": true
+      "non_admin_access": false
     },
     {
       "name": "kastnerbucket",
@@ -40,6 +40,16 @@
       ],
       "public": true,
       "non_admin_access": false
+    },
+    {
+      "name": "samadhanbucket",
+      "folders": [
+        "widget1",
+        "widget2",
+        "widget3"
+      ],
+      "public": true,
+      "non_admin_access": true
     }
   ]
 }
