@@ -52,9 +52,9 @@
       "non_admin_access": true
     },
     {
-      "name": "SolidWorksPDM",
+      "name": "solidworkspdm",
       "folders": [
-        "CSV",
+        "csv",
         "json"
       ],
       "public": true,
