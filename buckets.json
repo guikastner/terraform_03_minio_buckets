@@ -50,6 +50,15 @@
       ],
       "public": true,
       "non_admin_access": true
+    },
+    {
+      "name": "SolidWorksPDM",
+      "folders": [
+        "CSV",
+        "json"
+      ],
+      "public": true,
+      "non_admin_access": false
     }
   ]
 }
