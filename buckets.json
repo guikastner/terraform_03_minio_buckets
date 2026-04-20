@@ -59,6 +59,24 @@
       ],
       "public": true,
       "non_admin_access": false
+    },
+        {
+      "name": "djangoblogprod",
+      "folders": [
+        "media",
+        "settings"
+      ],
+      "public": true,
+      "non_admin_access": false
+    },
+        {
+      "name": "djangoblogdev",
+      "folders": [
+        "media",
+        "settings"
+      ],
+      "public": true,
+      "non_admin_access": false
     }
   ]
 }
