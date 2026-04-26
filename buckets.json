@@ -69,11 +69,19 @@
       "public": true,
       "non_admin_access": false
     },
-        {
+    {
       "name": "djangoblogdev",
       "folders": [
         "media",
         "settings"
+      ],
+      "public": true,
+      "non_admin_access": false
+    },
+    {
+      "name": "mcp3dx",
+      "folders": [
+        "bucket"
       ],
       "public": true,
       "non_admin_access": false
